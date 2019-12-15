@@ -1,0 +1,3 @@
+/Users/berk/CLionProjects/MPI/Mark1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/berk/CLionProjects/MPI/Mark1/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/berk/CLionProjects/MPI/Mark1/cmake-build-debug/CMakeFiles/Mark1.dir
