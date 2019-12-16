@@ -3,11 +3,93 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <fstream>
+#include <math.h>
 
 using namespace std;
 
+vector<vector<int>> get_input(string file_name){
+    vector<vector<int>> map;
+    ifstream in_file;
+    in_file.open(file_name);
+    if (!in_file) {
+        cerr << "Unable to open the input file";
+        exit(1);
+    }
+    int current_int;
+    for(int i=0; i<360; i++){
+        vector<int> current_vec;
+        for(int j=0; j<360; j++){
+            in_file >> current_int;
+            current_vec.push_back(current_int);
+            /*cout << "INPUT STREAM FOUND 1" << endl;*/
+        }
+        map.push_back(current_vec);
+    }
+
+    in_file.close();
+
+    return map;
+
+}
+
+void print_result(int n, vector<vector<int>> map){
+    ofstream out_file;
+    out_file.open ("output.txt");
+
+
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            out_file << map[i][j] << " ";
+        }
+        out_file << endl;
+    }
+
+    out_file.close();
+
+}
+
+vector<int> flat_map(vector<vector<int>> map){
+    vector<int> flatted_map;
+    for (int i = 0; i < map.size(); i++) {
+        for (int j = 0; j < map[0].size(); j++) {
+            flatted_map.push_back(map[i][j]);
+        }
+    }
+
+    return flatted_map;
+}
+
+vector<vector<int>> unpack_map(int n, vector<int> map){
+    vector<vector<int>> unpacked_map;
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        vector<int> current_vec;
+        for (int j = 0; j < n; j++) {
+            current_vec.push_back(map.at(count));
+            cout << count;
+            count++;
+        }
+        unpacked_map.push_back(current_vec);
+    }
+
+    return unpacked_map;
+}
+
+vector<vector<int>> base_submap(int c){
+    vector<vector<int>> base_submap;
+    int sqrt_c = sqrt(c);
+    int count = 360 / sqrt_c; // number of columns/rows
+    for(int i=0; i<count+2; i++){ // + 2 for paddings
+        vector<int> row;
+        for(int j=0; j<count+2; j++){
+            row.push_back(2); // 2 is a filler integer
+        }
+        base_submap.push_back(row);
+    }
+    return base_submap;
+}
 int main(int argc, char** argv) {
-    std::cout << "Hello, World!" << std::endl;
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
     int rank;
@@ -15,28 +97,436 @@ int main(int argc, char** argv) {
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    /*vector<vector<int> > vect{ { 1, 2 },
-                               { 3, 4 } };*/
+    vector<vector<int> > vect{ { 1, 2 },
+                               { 3, 4 } };
 
-    vector<int> map { 1, 2, 3, 4 };
+    vector<int> map2{1,2,3,4};
+
+    vector<vector<int>> map;
+
+    map = get_input("gliders.txt");
+
+    int row_index;
+    int column_index;
 
     int mine;
-    int current;
+    int temp; // Used as temp variable to move integers
+    int c = 16; // number of worker processes
+    int sqrt_c = sqrt(c);
+    int offset = 360 / sqrt_c; // Index offset for loops, also number of columns/rows
+    vector<int> flat_sub_map;
+    vector<int> message; // Array to be shared
 
     if(rank == 0){
-        for(int i=1; i< world_size; i++ ){
-            current = map[i-1];
-            MPI_Send(&current, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+
+
+
+
+        for(int r=1; r< world_size; r++){ // Iterate through ranks and distribute their sub maps.
+            row_index = (r-1) / sqrt_c;
+            column_index = r - (sqrt_c*row_index) - 1;
+            /*vector<int> flat_sub_map;*/
+
+            for(int i=row_index*offset; i<row_index*offset+offset; i++){
+
+                for(int j=column_index*offset; j<column_index*offset+offset; j++){
+
+                    flat_sub_map.push_back(map[i][j]);
+
+
+                }
+            }
+            /*cout << flat_sub_map.size() << endl;*/
+
+            MPI_Send(&flat_sub_map[0], offset*offset, MPI_INT, r, 0, MPI_COMM_WORLD);
+            flat_sub_map.clear();
+
         }
+
+
+
     }
-    else{
-        MPI_Recv(&current, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
+
+    else if(rank % 2 == 1 ){
+        flat_sub_map.resize(14400);
+        MPI_Recv(&flat_sub_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
 
-        mine = current;
+        vector<vector<int>> my_submap = base_submap(c);
+        int iterate = 0; // iterate through flat_sub_map array
+        for(int i=1; i<offset+1; i++){
+            for (int j = 1; j < offset+1; j++) {
+                my_submap[i][j] = flat_sub_map.at(iterate);
+                iterate++;
+
+            }
+        }
+
+
+
+        int target; // Rank of peer process
+        row_index = (rank-1) / sqrt_c; // current row index
+        int iterate_received = 0; // Iterate received message
+
+
+        // SEND PART
+
+        if(row_index % 2 == 1 ){ // First odd rows send bottom and upper parts
+
+            // Send bottom part
+            for(int i=1; i<offset+1; i++){ // bottom part of process
+                message.push_back(my_submap[offset][i]);
+            }
+
+            target = (rank + sqrt_c); // Calculate bottom process' rank
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+            message.clear();
+
+            // Send upper part
+
+            for(int i=1; i<offset+1; i++){
+                message.push_back(my_submap[1][i]);
+            }
+
+            target = (rank - sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+            message.clear();
+
+        }
+        else{
+
+            // Receive upper part ( Peer's bottom part )
+
+            message.resize(offset);
+
+            target = (rank - sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for(int i=1; i<offset+1; i++){
+                my_submap[0][i] = message[iterate_received];
+                iterate_received++;
+            }
+
+            iterate_received = 0;
+
+            message.clear();
+
+            // Receive bottom part ( Peer's upper part )
+
+            target = (rank + sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            message.resize(offset);
+
+            MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for(int i=1; i<offset+1; i++){
+                my_submap[offset+1][i] = message[iterate_received];
+                iterate_received++;
+            }
+
+            iterate_received = 0;
+
+            message.clear();
+
+
+        }
+
+       /* // Send right part
+
+        for(int i=1; i<offset+1; i++){ // first element is top element
+            message.push_back(my_submap[i][offset]);
+        }
+
+        target = (rank + 1) % c; // Calculate right process' rank
+
+        MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+        message.clear();
+
+
+
+        // Send left part
+
+        for(int i=1; i<offset+1; i++){
+            message.push_back(my_submap[i][1]);
+        }
+
+        target = (rank - 1) % c;
+
+        MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+        message.clear();
+
+        // RECEIVE PART
+
+
+        // Receive left part ( Peer's right part )
+
+        message.resize(offset);
+
+        target = (rank - 1) % c; // Calculate left process' rank
+
+        MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for(int i=1; i<offset+1; i++){
+            my_submap[i][0] = message[iterate_received];
+            iterate_received++;
+        }
+
+        iterate_received = 0;
+
+
+
+
+        // Receive right part ( Peer's left part )
+
+        target = (rank + 1) % c; // Calculate right process' rank
+
+        MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for(int i=1; i<offset+1; i++){
+            my_submap[i][offset+1] = message[iterate_received];
+            iterate_received++;
+        }
+
+        iterate_received = 0;
+*/
+
+
+        cout << "rank: " << rank << ", sub_map_size: " << my_submap.size() << endl;
+
+
+
+
     }
 
-    cout <<"My rank: " << rank << ", my integer: " << mine << ", world_size: " << world_size << endl;
+    else if(rank % 2 == 0 ){
+        flat_sub_map.resize(14400);
+        MPI_Recv(&flat_sub_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD,
+                 MPI_STATUS_IGNORE);
+
+        vector<vector<int>> my_submap = base_submap(c);
+        int iterate = 0; // iterate through flat_sub_map array
+        for(int i=1; i<offset+1; i++){
+            for (int j = 1; j < offset+1; j++) {
+                my_submap[i][j] = flat_sub_map.at(iterate);
+                iterate++;
+
+            }
+        }
+
+
+        int target; // Rank of peer process
+        row_index = (rank-1) / sqrt_c; // current row index
+        int iterate_received = 0; // Iterate received message
+
+        if(row_index % 2 == 1 ){ // First odd rows send bottom and upper parts
+
+            // Send bottom part
+            for(int i=1; i<offset+1; i++){ // bottom part of process
+                message.push_back(my_submap[offset][i]);
+            }
+
+            target = (rank + sqrt_c); // Calculate bottom process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+            message.clear();
+
+            // Send upper part
+
+            for(int i=1; i<offset+1; i++){
+                message.push_back(my_submap[1][i]);
+            }
+
+            target = (rank - sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+            message.clear();
+
+        }
+        else{
+
+            // Receive upper part ( Peer's bottom part )
+
+            message.resize(offset);
+
+            target = (rank - sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for(int i=1; i<offset+1; i++){
+                my_submap[0][i] = message[iterate_received];
+                iterate_received++;
+            }
+
+            iterate_received = 0;
+
+            message.clear();
+
+            // Receive bottom part ( Peer's upper part )
+
+            message.resize(offset);
+
+            target = (rank + sqrt_c); // Calculate upper process' rank
+
+            if(target > c ){
+                target -= c;
+            }
+            else if(target <= 0){
+                target += c;
+            }
+
+            MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for(int i=1; i<offset+1; i++){
+                my_submap[offset+1][i] = message[iterate_received];
+                iterate_received++;
+            }
+
+            iterate_received = 0;
+
+            message.clear();
+
+
+        }
+
+
+/*
+        // RECEIVE PART
+
+
+        // Receive left part ( Peer's right part )
+
+        message.resize(offset);
+
+        target = (rank - 1) % c; // Calculate left process' rank
+
+        MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for(int i=1; i<offset+1; i++){
+            my_submap[i][0] = message[iterate_received];
+            iterate_received++;
+        }
+
+        iterate_received = 0;
+
+
+        // Receive right part ( Peer's left part )
+
+        target = (rank + 1) % c; // Calculate right process' rank
+
+        MPI_Recv(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for(int i=1; i<offset+1; i++){
+            my_submap[i][offset+1] = message[iterate_received];
+            iterate_received++;
+        }
+
+        iterate_received = 0;
+*/
+
+
+
+
+
+
+
+
+/*
+        // SEND PART
+
+
+        // Send right part
+
+        for(int i=1; i<offset+1; i++){ // first element is top element
+            message.push_back(my_submap[i][offset]);
+        }
+
+        target = (rank + 1) % c; // Calculate right process' rank
+
+        MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+        message.clear();
+
+
+        // Send left part
+
+        for(int i=1; i<offset+1; i++){
+            message.push_back(my_submap[i][1]);
+        }
+
+        target = (rank - 1) % c;
+
+        MPI_Send(&message[0], offset, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+        message.clear();
+*/
+
+
+
+        cout << "rank: " << rank << ", sub_map_size: " << my_submap.size() << endl;
+
+
+
+
+    }
+
+/*    cout <<"My rank: " << rank << ", my integer: " << mine << ", world_size: " << world_size << endl;*/
 
     MPI_Finalize();
 
