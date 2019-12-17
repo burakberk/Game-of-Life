@@ -527,9 +527,8 @@ int main(int argc, char** argv) {
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
-        /*cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
-       /* // RECEIVE CORNERS PART
+        // RECEIVE CORNERS PART
 
         // Receive lower right corner
         if(column_index == sqrt_c - 1){
@@ -609,13 +608,12 @@ int main(int argc, char** argv) {
             }
         }
 
-
         MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         my_submap[0][0] = corner;
 
+        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
 
-*/
 
 
     }
@@ -1010,9 +1008,9 @@ int main(int argc, char** argv) {
 
         my_submap[0][0] = corner;
 
-        /*cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
-/*        // SEND CORNERS PART
+
+        // SEND CORNERS PART
 
         // Send upper left corner
 
@@ -1073,14 +1071,13 @@ int main(int argc, char** argv) {
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
 
-
         // Send lower right corner
 
         corner = my_submap[offset][offset];
 
 
         if(column_index == sqrt_c - 1){
-            target = target + 1;
+            target = rank + 1;
             if(target > c){
                 target = 1;
             }
@@ -1092,7 +1089,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);*/
+        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
+
+        MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
+
 
 
     }
