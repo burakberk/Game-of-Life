@@ -464,10 +464,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
+
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
-/*        // Send upper right corner
+        // Send upper right corner
 
         corner = my_submap[1][offset];
 
@@ -479,8 +479,8 @@ int main(int argc, char** argv) {
         }
         else{
             target = (rank - sqrt_c + 1);
-            if(target < 0){
-                target = c- sqrt_c;
+            if(target <= 0){
+                target = target + c;
             }
         }
 
@@ -492,18 +492,20 @@ int main(int argc, char** argv) {
 
         if(column_index == 0){
             target = (rank + (2*sqrt_c) - 1);
-            if(target > 0){
+            if(target > c){
                 target = sqrt_c;
             }
         }
         else{
             target = (rank + sqrt_c - 1);
-            if(target > 0){
+            if(target > c){
                 target = target - c;
             }
         }
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+
 
         // Send lower right corner
 
@@ -525,10 +527,95 @@ int main(int argc, char** argv) {
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
+        /*cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
-        cout << "rank: " << rank << ", sub_map_size: " << my_submap.size() << endl;*/
+       /* // RECEIVE CORNERS PART
+
+        // Receive lower right corner
+        if(column_index == sqrt_c - 1){
+            target = rank + 1;
+            if(target > c){
+                target = 1;
+            }
+        }
+        else{
+            target = (rank + sqrt_c + 1);
+            if(target > c){
+                target = target - c;
+            }
+        }
 
 
+
+        MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        my_submap[offset+1][offset+1] = corner;
+
+
+        // Receive lower left corner
+
+        if(column_index == 0){
+            target = (rank + (2*sqrt_c) - 1);
+            if(target > c){
+                target = sqrt_c;
+            }
+        }
+        else{
+            target = (rank + sqrt_c - 1);
+            if(target > c){
+                target = target - c;
+            }
+        }
+
+        MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        my_submap[offset+1][0] = corner;
+
+
+
+        // Receive upper right corner
+
+        if(column_index == sqrt_c - 1){
+            target = (rank - (2*sqrt_c) + 1);
+            if(target < 0){
+                target = c - sqrt_c + 1;
+            }
+        }
+        else{
+            target = (rank - sqrt_c + 1);
+            if(target <= 0){
+                target = target + c;
+            }
+        }
+
+        MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        my_submap[0][offset+1] = corner;
+
+
+
+        // Receive upper left corner
+
+        if(column_index == 0){
+            target = rank - 1;
+            if(target == 0){
+                target = c;
+            }
+        }
+        else{
+            target = (rank - sqrt_c - 1);
+            if(target <= 0){
+                target += c;
+            }
+        }
+
+
+        MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        my_submap[0][0] = corner;
+
+
+*/
 
 
     }
@@ -731,6 +818,8 @@ int main(int argc, char** argv) {
             message.clear();
 
 
+
+
         }
 
 
@@ -852,24 +941,24 @@ int main(int argc, char** argv) {
             }
         }
 
-        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
+
 
         MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         my_submap[offset+1][offset+1] = corner;
-        
 
-        /*// Receive lower left corner
+
+        // Receive lower left corner
 
         if(column_index == 0){
             target = (rank + (2*sqrt_c) - 1);
-            if(target > 0){
+            if(target > c){
                 target = sqrt_c;
             }
         }
         else{
             target = (rank + sqrt_c - 1);
-            if(target > 0){
+            if(target > c){
                 target = target - c;
             }
         }
@@ -877,6 +966,8 @@ int main(int argc, char** argv) {
         MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         my_submap[offset+1][0] = corner;
+
+
 
         // Receive upper right corner
 
@@ -888,14 +979,16 @@ int main(int argc, char** argv) {
         }
         else{
             target = (rank - sqrt_c + 1);
-            if(target < 0){
-                target = c- sqrt_c;
+            if(target <= 0){
+                target = target + c;
             }
         }
 
         MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         my_submap[0][offset+1] = corner;
+
+
 
         // Receive upper left corner
 
@@ -915,25 +1008,29 @@ int main(int argc, char** argv) {
 
         MPI_Recv(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-        my_submap[0][0] = corner;*/
+        my_submap[0][0] = corner;
 
+        /*cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
-
-
-        /*// SEND CORNERS PART
+/*        // SEND CORNERS PART
 
         // Send upper left corner
 
         corner = my_submap[1][1];
 
-        target = (rank - row_index - 1);
+        if(column_index == 0){
+            target = rank - 1;
+            if(target == 0){
+                target = c;
+            }
+        }
+        else{
+            target = (rank - sqrt_c - 1);
+            if(target <= 0){
+                target += c;
+            }
+        }
 
-        if(target > c ){
-            target -= c;
-        }
-        else if(target <= 0){
-            target += c;
-        }
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
@@ -941,13 +1038,17 @@ int main(int argc, char** argv) {
 
         corner = my_submap[1][offset];
 
-        target = (rank - row_index + 1);
-
-        if(target > c ){
-            target -= c;
+        if(column_index == sqrt_c - 1){
+            target = (rank - (2*sqrt_c) + 1);
+            if(target < 0){
+                target = c - sqrt_c + 1;
+            }
         }
-        else if(target <= 0){
-            target += c;
+        else{
+            target = (rank - sqrt_c + 1);
+            if(target <= 0){
+                target = target + c;
+            }
         }
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
@@ -956,32 +1057,42 @@ int main(int argc, char** argv) {
 
         corner = my_submap[offset][1];
 
-        target = (rank + row_index - 1);
-
-        if(target > c ){
-            target -= c;
+        if(column_index == 0){
+            target = (rank + (2*sqrt_c) - 1);
+            if(target > c){
+                target = sqrt_c;
+            }
         }
-        else if(target <= 0){
-            target += c;
+        else{
+            target = (rank + sqrt_c - 1);
+            if(target > c){
+                target = target - c;
+            }
         }
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+
 
         // Send lower right corner
 
         corner = my_submap[offset][offset];
 
-        target = (rank + row_index + 1);
 
-        if(target > c ){
-            target -= c;
+        if(column_index == sqrt_c - 1){
+            target = target + 1;
+            if(target > c){
+                target = 1;
+            }
         }
-        else if(target <= 0){
-            target += c;
+        else{
+            target = (rank + sqrt_c + 1);
+            if(target > c){
+                target = target - c;
+            }
         }
 
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);*/
-
 
 
     }
