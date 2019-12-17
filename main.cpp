@@ -357,10 +357,10 @@ int main(int argc, char** argv) {
 
         target = (rank + 1); // Calculate right process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -378,10 +378,10 @@ int main(int argc, char** argv) {
 
         target = (rank - 1);
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -398,10 +398,10 @@ int main(int argc, char** argv) {
 
         target = (rank - 1); // Calculate left process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -425,10 +425,10 @@ int main(int argc, char** argv) {
 
         target = (rank + 1); // Calculate right process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -662,10 +662,10 @@ int main(int argc, char** argv) {
 
         target = (rank - 1); // Calculate left process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -687,10 +687,10 @@ int main(int argc, char** argv) {
 
         target = (rank + 1); // Calculate right process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -723,10 +723,10 @@ int main(int argc, char** argv) {
 
         target = (rank + 1); // Calculate right process' rank
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
@@ -743,10 +743,10 @@ int main(int argc, char** argv) {
 
         target = (rank - 1);
 
-        if(target > c ){
+        if(target > (row_index+1)*sqrt_c ){
             target -= sqrt_c;
         }
-        else if(target <= 0){
+        else if(target <= (row_index)*sqrt_c){
             target += sqrt_c;
         }
 
