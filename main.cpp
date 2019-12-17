@@ -17,9 +17,9 @@ vector<vector<int>> get_input(string file_name){
         exit(1);
     }
     int current_int;
-    for(int i=0; i<2; i++){
+    for(int i=0; i<360; i++){
         vector<int> current_vec;
-        for(int j=0; j<2; j++){
+        for(int j=0; j<360; j++){
             in_file >> current_int;
             current_vec.push_back(current_int);
             /*cout << "INPUT STREAM FOUND 1" << endl;*/
@@ -28,14 +28,13 @@ vector<vector<int>> get_input(string file_name){
     }
 
     in_file.close();
-
     return map;
 
 }
 
-void print_result(int n, vector<vector<int>> map){
+void print_result(int n, vector<vector<int>> map, string file_name){
     ofstream out_file;
-    out_file.open ("output.txt");
+    out_file.open (file_name);
 
 
     for(int i=0; i<n; i++){
@@ -78,7 +77,7 @@ vector<vector<int>> unpack_map(int n, vector<int> map){
 vector<vector<int>> base_submap(int c){
     vector<vector<int>> base_submap;
     int sqrt_c = sqrt(c);
-    int count = 2 / sqrt_c; // number of columns/rows
+    int count = 360 / sqrt_c; // number of columns/rows
     for(int i=0; i<count+2; i++){ // + 2 for paddings
         vector<int> row;
         for(int j=0; j<count+2; j++){
@@ -88,6 +87,8 @@ vector<vector<int>> base_submap(int c){
     }
     return base_submap;
 }
+
+
 int main(int argc, char** argv) {
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
@@ -96,37 +97,33 @@ int main(int argc, char** argv) {
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    vector<vector<int> > vect{ { 1, 2 },
-                               { 3, 4 } };
 
-    vector<int> map2{1,2,3,4};
 
     vector<vector<int>> map;
 
-    map = get_input("my_input.txt");
-    print_result(2, map);
+
 
     int row_index;
     int column_index;
 
     int mine;
     int temp; // Used as temp variable to move integers
-    int c = 4; // number of worker processes
+    int c = world_size - 1; // number of worker processes
     int sqrt_c = sqrt(c);
-    int offset = 2 / sqrt_c; // Index offset for loops, also number of columns/rows
+    int offset = 360 / sqrt_c; // Index offset for loops, also number of columns/rows
     vector<int> flat_sub_map;
     vector<int> message; // Array to be shared
     int corner; // Corner integer to be shared
 
     if(rank == 0){
 
-
+        map = get_input(argv[1]);
 
 
         for(int r=1; r< world_size; r++){ // Iterate through ranks and distribute their sub maps.
             row_index = (r-1) / sqrt_c;
             column_index = r - (sqrt_c*row_index) - 1;
-            /*vector<int> flat_sub_map;*/
+
 
             for(int i=row_index*offset; i<row_index*offset+offset; i++){
 
@@ -149,7 +146,7 @@ int main(int argc, char** argv) {
     }
 
     else if(rank % 2 == 1 ){
-        flat_sub_map.resize(14400);
+        flat_sub_map.resize(offset*offset);
         MPI_Recv(&flat_sub_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
 
@@ -170,8 +167,7 @@ int main(int argc, char** argv) {
         column_index = rank - (sqrt_c*row_index) - 1; // current column index
         int iterate_received = 0; // Iterate received message
 
-
-        // SEND PART
+// SEND PART
 
         if(row_index % 2 == 1 ){ // First odd rows send bottom and upper parts
 
@@ -612,14 +608,14 @@ int main(int argc, char** argv) {
 
         my_submap[0][0] = corner;
 
-        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
+/*        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
 
 
     }
 
     else if(rank % 2 == 0 ){
-        flat_sub_map.resize(14400);
+        flat_sub_map.resize(offset*offset);
         MPI_Recv(&flat_sub_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
 
@@ -638,6 +634,8 @@ int main(int argc, char** argv) {
         row_index = (rank-1) / sqrt_c; // current row index
         column_index = rank - (sqrt_c*row_index) - 1; // current column index
         int iterate_received = 0; // Iterate received message
+
+
 
         if(row_index % 2 == 1 ){ // First odd rows send bottom and upper parts
 
@@ -917,12 +915,6 @@ int main(int argc, char** argv) {
         message.clear();
 
 
-
-        /*cout << "rank: " << rank << ", sub_map_size: " << my_submap.size() << endl;*/
-        if(rank == 4){
-            print_result(3, my_submap);
-        }
-
         // RECEIVE CORNERS PART
 
         // Receive lower right corner
@@ -1089,16 +1081,18 @@ int main(int argc, char** argv) {
             }
         }
 
-        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;
-
         MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
+
+/*        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
+
 
 
 
     }
 
-
-
+    if(rank == 0){
+        print_result(sqrt_c, map, argv[2]);
+    }
 
 
     MPI_Finalize();
