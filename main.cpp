@@ -36,14 +36,15 @@ void print_result(int n, vector<vector<int>> map, string file_name){
     ofstream out_file;
     out_file.open (file_name);
 
-
+    int count = 0;
     for(int i=0; i<n; i++){
         for(int j=0; j<n; j++){
             out_file << map[i][j] << " ";
+            count += map[i][j];
         }
         out_file << endl;
     }
-
+    cout <<count<<endl;
     out_file.close();
 
 }
@@ -118,6 +119,7 @@ int main(int argc, char** argv) {
     int sqrt_c = sqrt(c);
     int offset = 360 / sqrt_c; // Index offset for loops, also number of columns/rows
     vector<int> flat_sub_map;
+    vector<int> send_map;
     vector<int> message; // Array to be shared
     int corner; // Corner integer to be shared
     int iteration = stoi(argv[3]); // number of iteration requested
@@ -619,23 +621,48 @@ int main(int argc, char** argv) {
 /*        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
 
+            int control = 0;
 
-            for(int row=1; row<offset; row++){
-                for(int column=1; column<offset; column++){
-                    int count= 0; // count number of 1's
-                    count = count +  my_submap[row-1][column-1] +  my_submap[row-1][column] +  my_submap[row-1][column+1] +  my_submap[row][column-1]
+            vector<vector<int>> temp_submap = my_submap;
+            for(int row=1; row<offset+1; row++){
+                for(int column=1; column<offset+1; column++){
+                    int count; // count number of 1's
+                    count = my_submap[row-1][column-1] +  my_submap[row-1][column] +  my_submap[row-1][column+1] +  my_submap[row][column-1]
                             + my_submap[row][column+1] + my_submap[row+1][column-1] + my_submap[row+1][column] + my_submap[row+1][column+1];
 
                     if(count < 2 || count > 3){
-                        my_submap[row][column] = 0;
+                        temp_submap[row][column] = 0;
+                        /*cout << "??" << endl;*/
                     }
                     else if(count == 3){
-                        my_submap[row][column] = 0;
+                        temp_submap[row][column] = 1;
+
+
+                    }
+
+                    if(temp_submap[row][column] == 1){
+                        control++;
                     }
                 }
             }
 
+            my_submap = temp_submap;
+
+            cout << "rank: " << rank << ", ones: " << control << ", iteration: " << i << endl;
+
         }
+
+        for(int i=1; i<offset+1; i++){
+
+            for(int j=1; j<offset+1; j++){
+
+                send_map.push_back(my_submap[i][j]);
+
+            }
+        }
+
+        MPI_Send(&send_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        send_map.clear();
     }
 
     else if(rank % 2 == 0 ){
@@ -1083,22 +1110,38 @@ int main(int argc, char** argv) {
 
             MPI_Send(&corner, 1, MPI_INT, target, 0, MPI_COMM_WORLD);
 
-
-            for(int row=1; row<offset; row++){
-                for(int column=1; column<offset; column++){
+            vector<vector<int>> temp_submap = my_submap;
+            for(int row=1; row<offset+1; row++){
+                for(int column=1; column<offset+1; column++){
                     int count= 0; // count number of 1's
                     count = count +  my_submap[row-1][column-1] +  my_submap[row-1][column] +  my_submap[row-1][column+1] +  my_submap[row][column-1]
                             + my_submap[row][column+1] + my_submap[row+1][column-1] + my_submap[row+1][column] + my_submap[row+1][column+1];
 
                     if(count < 2 || count > 3){
-                        my_submap[row][column] = 0;
+                        temp_submap[row][column] = 0;
                     }
                     else if(count == 3){
-                        my_submap[row][column] = 0;
+                        temp_submap[row][column] = 1;
                     }
                 }
             }
+
+            my_submap = temp_submap;
         }
+
+        for(int i=1; i<offset+1; i++){
+
+            for(int j=1; j<offset+1; j++){
+
+                send_map.push_back(my_submap[i][j]);
+
+
+            }
+        }
+
+
+        MPI_Send(&send_map[0], offset*offset, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        send_map.clear();
 /*        cout << "rank: " << rank << ", target: " << target << ", column index: " << column_index << endl;*/
 
 
@@ -1107,8 +1150,39 @@ int main(int argc, char** argv) {
     }
 
     if(rank == 0){
-        print_result(sqrt_c, map, argv[2]);
+
+
+
+
+        for(int r=1; r< world_size; r++){ // Iterate through ranks and collect their sub maps.
+            row_index = (r-1) / sqrt_c;
+            column_index = r - (sqrt_c*row_index) - 1;
+            send_map.resize(offset*offset);
+            MPI_Recv(&send_map[0], offset*offset, MPI_INT, r, 0, MPI_COMM_WORLD,
+                     MPI_STATUS_IGNORE);
+
+            int iterate = 0;
+
+            for(int i=row_index*offset; i<row_index*offset+offset; i++){
+
+                for(int j=column_index*offset; j<column_index*offset+offset; j++){
+
+                    map[i][j] = send_map[iterate];
+                    iterate++;
+
+
+                }
+            }
+
+        }
+
+        print_result(360, map, argv[2]);
+
+
+
     }
+
+
 
 
     MPI_Finalize();
