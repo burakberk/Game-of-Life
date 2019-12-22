@@ -176,11 +176,9 @@ int main(int argc, char** argv) {
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size); // Get world size
 
-
     vector<vector<int>> map;
     int row_index;
     int column_index;
-
     int temp; // Used as temp variable to move integers
     int c = world_size - 1; // number of worker processes
     int sqrt_c = sqrt(c); // Number of columns/rows
@@ -699,5 +697,4 @@ int main(int argc, char** argv) {
         print_result(360, map, argv[2]);
     }
     MPI_Finalize();
-
 }
